@@ -1,0 +1,39 @@
+[package]
+name = "veda-agent"
+version = "0.1.0"
+description = "Veda Agent workspace shell"
+authors = ["Veda Agent"]
+edition = "2021"
+
+[lib]
+name = "veda_agent_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Windows App SDK 的合成材质需要 WinRT/Composition 投影。`windows` 早已在依赖树里
+# (Tauri 间接引入),这里只是把它提为直接依赖并打开所需 feature,不新增第三方 crate。
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+    "Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Foundation_Collections",
+    "System",
+    "UI",
+    "UI_Composition",
+    "UI_Composition_Desktop",
+    "Win32_Foundation",
+    "Win32_Graphics_Dwm",
+    "Win32_System_Com",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_WinRT",
+    "Win32_System_WinRT_Composition",
+] }
+windows-core = "0.62"

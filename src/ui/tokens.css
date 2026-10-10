@@ -1,0 +1,140 @@
+/*
+ * Design tokens for the Veda host shell.
+ *
+ * Rules these values encode:
+ *  - Surfaces are COOL grey-blue (B > G > R), by explicit request. This reverses an
+ *    earlier rule that required strictly neutral R = G = B; see the note at the
+ *    surface block below for why, for the measured cast it matches, and how to go
+ *    back to neutral.
+ *  - No borders, no shadows, no dividers: separation comes from tint and spacing.
+ *  - Alpha values are the only transparency knob. The host window is transparent and
+ *    the OS acrylic (DWM_DWMSBT_TRANSIENTWINDOW) sits underneath these layers.
+  *  - Transmission multiplies: 透出 ≈ (1 − scrim) × (1 − surface). Both factors are
+ *    this file's, so any "more/less transparent" change happens here and nowhere else.
+ */
+:root {
+  /* Cool surfaces. */
+  /*
+   * 窗口材质(Acrylic / Aero)由 DWM 画在**窗口内容下方**,位置就在这层 scrim 后面。
+   * 所以 scrim 的厚度直接决定模糊层露出多少——这是"材质开了却看不出变化"的
+   * 头号成因:不是材质失效,是它被自己的底色埋了。实测同一台机器、同一壁纸:
+   *   scrim 0.56 → 窗内亮度 38.7,材质被整块盖住
+   *   scrim 0.20 → 194.9(Acrylic) / 205.3(Aero),材质清晰可见
+   *
+   * 现行取值(2026-10-07 第四次调)按**"读得清 + 深色 UI 稳定"**取,不按"能透多少"取。
+   * 前三版的教训:
+   *   ① scrim 0.34(净透出 54%)—— "过于透亮、文字有些看不清"
+   *   ② scrim 0.54(34%)      —— "太过于通透了"
+   *   ③ scrim 0.66(34%,材质 tint 仍为 0.15)—— "看着很怪"
+   * 第 ③ 次怪在哪:窗口背后的桌面**是纯白**时,实测窗内是 (93,95,101),正好等于
+   * 0.66×(9,12,22) + 0.34×白 —— 也就是"浅灰板 + 浅色文字",和深色 UI 的观感对不上,
+   * 而且浓度完全由背后是什么决定(白底就发灰、暗底就发黑)。
+   *
+   * 所以这一版同时收两层,让窗口在亮底/彩底/暗底上都落在深色区间:
+   *   · 材质层:system-acrylic 的 tint_opacity 0.15 → 0.35(见 acrylic.rs)
+   *   · CSS 层:scrim 0.66 → 0.78,其余同步收厚
+   * 两层是相乘的,所以"更不透"这件事现在有两处可调,而不是只靠把 scrim 压到不透明。
+   *
+   * 逐层透出(透出 = (1−scrim)×(1−层);材质层另算,见 acrylic.rs):
+   *   窗口底 22.0% · 工具栏 11.0% · 面板 13.2% · 强面 5.7%
+   * 最差情况(纯白底)下的合成亮度:窗口底约 (63,66,73) → 深色区间;
+   * 亮彩底(160,190,202)下约 (44,51,60)。正文对比度两处都 > 10:1。
+   *
+   * 色偏不是从别处抄的:参考图(1468x1375)实测 B−R 在 +11 ~ +53 之间,
+   * 越亮的地方偏得越多;这里取暗色区间对应的 +14 ~ +24。
+   * 回到中性灰 = 把这四个值改成 R = G = B(旧值见文末注释;仓库没有提交历史,别指望回查)。
+   */
+  --app-scrim: rgba(9, 12, 22, 0.78); /* over the OS material */
+  --app-toolbar: rgba(22, 26, 40, 0.50);
+  --app-surface: rgba(24, 28, 44, 0.40);
+  --app-surface-strong: rgba(30, 35, 54, 0.74);
+  --app-surface-glass: rgba(220, 232, 255, 0.055);
+
+  /*
+   * Text — 略偏冷,和表面同一条色相,避免文字看起来"黄"。
+   *
+   * 最低两级在 2026-10-07 提亮过一次:它们原来压在 54% 透出的底上时,次要色
+   * 对比度 2.67:1、标注 1.5:1 —— 那已经等于没写。提亮后配合加厚底色才落到
+   * 可用区间。以后再调透明,这两级要跟着复核,别只看正文。
+   */
+  --app-text: #eef1f8;
+  --app-text-muted: #d3d9e6;
+  --app-text-subtle: #c6ccda;
+
+  /* Interaction — 高光是冷白而不是纯白,压在蓝底上不会读成灰点 */
+  --app-hover: rgba(214, 226, 255, 0.075);
+  --app-active: rgba(214, 226, 255, 0.14);
+  /*
+   * 焦点环与错误色 —— 状态表达的两个底座。
+   *
+   * 为什么必须有这两个 token(而不是让组件各写各的):`02-gui-layout-and-haze.md:134`
+   * 要求"键盘焦点不能只通过颜色变化表示",`:137` 要求"UI 错误状态不能只靠红色表达"。
+   * 于是焦点环必须是**看得见的一圈**(而不是把某个 tint 调深一点),错误必须有一个
+   * 与正文区分得开、又和冷色底不打架的颜色。两处都是跨组件共用的语义,所以在这里
+   * 定义一次;组件的视觉规格表见 docs/architecture/07-layout-design.md §8.3/§8.4。
+   */
+  --app-focus-ring: rgba(214, 226, 255, 0.55);
+  --app-danger: #d98b8b;
+  /*
+   * 结构边界的**唯一**一次表达。
+   *
+   * 参考实现 Pebrel 把「圆角卡片浮在壳层上」和「整片由一条发丝线分隔」当作同一条
+   * 代码路径上的两组值(pane_card_radius / gutter / shadow / divider),并明确指出:
+   * gutter 存在时**故意不画线**——"有间距还画线,等于用两句话说同一件事"。
+   * 这里 gutter 为 0、面板紧邻,所以边界交给发丝线;alpha 压到 7%,让它只是"接缝"
+   * 而不成为"框"。
+   */
+  --app-hairline: rgba(200, 215, 255, 0.075);
+  --app-hairline-strong: rgba(200, 215, 255, 0.17);
+  --app-accent: #8fa3c8;
+
+  /* Geometry */
+  --app-radius: 8px;
+  --app-toolbar-height: 52px;
+  --app-tab-height: 34px;
+  --app-pane-min: 180px;
+  --app-divider: 1px; /* hit area only — nothing is painted */
+
+  --app-font: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  --app-mono: 'DM Mono', ui-monospace, monospace;
+}
+
+/*
+ * 回退档位。每一档只要把上面「表面 + 文字」那几行替换掉即可 —— 透出比全部由本文件
+ * 决定,不涉及任何组件,这是这份文件存在的意义。四档按时间倒序(最近的在最上面)。
+ *
+ * ── 档位 A:第四次调之前(材质 tint 0.15,scrim 0.66;用户反馈"看着很怪")
+ *   --app-scrim:          rgba(9, 12, 22, 0.66)
+ *   --app-toolbar:        rgba(22, 26, 40, 0.38)
+ *   --app-surface:        rgba(24, 28, 44, 0.32)
+ *   --app-surface-strong: rgba(30, 35, 54, 0.68)
+ *   --app-text: #eef1f8 / muted #d3d9e6 / subtle #c6ccda
+ *   → 窗口底 34% · 工具栏 21% · 面板 23% 透出;纯白底上窗内约 (93,95,101)
+ *
+ * ── 档位 B:第三次调之前(用户反馈"太过于通透了")
+ *   --app-scrim:          rgba(9, 12, 22, 0.54)
+ *   --app-toolbar:        rgba(22, 26, 40, 0.30)
+ *   --app-surface:        rgba(24, 28, 44, 0.26)
+ *   --app-surface-strong: rgba(30, 35, 54, 0.60)
+ *   --app-text: #eef1f8 / muted #d3d9e6 / subtle #c6ccda
+ *   → 窗口底 46% · 工具栏 32% · 面板 34% 透出
+ *
+ * ── 档位 B:第二次调之前(用户反馈"过于透亮、文字有些看不清")
+ *   --app-scrim:          rgba(10, 13, 24, 0.34)
+ *   --app-toolbar:        rgba(22, 26, 40, 0.28)
+ *   --app-surface:        rgba(24, 28, 44, 0.18)
+ *   --app-surface-strong: rgba(30, 35, 54, 0.50)
+ *   --app-text: #eef1f8 / --app-text-muted: #c3cad9 / --app-text-subtle: #8f97a8
+ *   → 窗口底 66% · 工具栏 47.5% · 面板 54.1% 透出;正文对比度 3.85:1、标注 1.5:1
+ *
+ * ── 档位 C:最早那版(中性灰 + 更厚,读得清但完全不透)
+ *   --app-scrim:          rgba(10, 10, 11, 0.62)
+ *   --app-toolbar:        rgba(22, 22, 24, 0.32)
+ *   --app-surface:        rgba(24, 24, 26, 0.22)
+ *   --app-surface-strong: rgba(30, 30, 32, 0.56)
+ *   --app-surface-glass:  rgba(255, 255, 255, 0.05)
+ *   --app-text: #f0f0f1 / --app-text-muted: #c6c6c9 / --app-text-subtle: #96969a
+ *   --app-hover: rgba(255,255,255,0.07) / --app-active: rgba(255,255,255,0.13)
+ *   --app-hairline: rgba(255,255,255,0.07) / -strong: 0.16 / --app-accent: #8f8f96
+ *   → 窗口底 38% · 面板 29.6% 透出;R = G = B,没有色偏
+ */

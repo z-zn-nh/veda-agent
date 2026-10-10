@@ -1,0 +1,265 @@
+@import './assets/fonts/fonts.css';
+@import './ui/tokens.css';
+@import './ui/ui.css';
+* { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+body { min-width: 900px; color: var(--app-text); font-family: var(--app-font); font-synthesis: none; text-rendering: optimizeLegibility; }
+button, textarea, input { font: inherit; color: inherit; }
+button { border: 0; background: none; cursor: pointer; padding: 0; }
+
+/* Host: transparent so the OS acrylic shows. The scrim is the only full-window tint. */
+.app-shell { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 560px; overflow: hidden; background: var(--app-scrim); }
+
+/* ── Toolbar ───────────────────────────────────────────────────────────── */
+.topbar { display: flex; align-items: center; flex: 0 0 var(--app-toolbar-height); gap: 22px; padding: 0 12px 0 16px; background: var(--app-toolbar); user-select: none; }
+.brand { display: flex; align-items: center; gap: 8px; color: var(--app-text); font-size: 13.5px; font-weight: 650; }
+.tool-nav { display: flex; align-items: center; gap: 2px; }
+.topbar-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.pane-count { padding: 0 6px; color: var(--app-text-subtle); font-family: var(--app-mono); font-size: 10px; }
+/* 自绘窗口按钮（decorations: false，所以原生按钮不存在）。单色图标，hover 只换 tint。 */
+.window-controls { display: flex; align-items: center; gap: 2px; margin-left: 2px; }
+.window-button { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 6px; color: var(--app-text-subtle); transition: background .14s ease, color .14s ease; }
+.window-button:hover { color: var(--app-text); background: var(--app-hover); }
+.window-button-close:hover { background: var(--app-active); }
+
+/* ── Layout tree ───────────────────────────────────────────────────────── */
+.layout-host { flex: 1; min-height: 0; display: flex; }
+
+.split { display: flex; flex: 1; min-width: 0; min-height: 0; }
+.split-row { flex-direction: row; }
+.split-column { flex-direction: column; }
+.split-part { display: flex; min-width: var(--app-pane-min); min-height: 0; overflow: hidden; }
+.split-part-grow { flex: 1; }
+
+/*
+ * 分隔器:命中区 5px,但只画 1px 发丝线。
+ * 加宽的是可抓取范围,不是视觉重量——让线宽跟着命中区走,边界会比面板本身还重。
+ * 静止时它只是一条接缝;hover/聚焦才提亮,回答"我正在拖的是哪一条"。
+ */
+.divider { position: relative; flex: 0 0 5px; outline: 0; }
+.divider-row { cursor: col-resize; }
+.divider-column { cursor: row-resize; }
+.divider::after { content: ''; position: absolute; background: var(--app-hairline); transition: background .15s ease; }
+.divider-row::after { inset: 0 auto 0 50%; width: 1px; transform: translateX(-50%); }
+.divider-column::after { inset: 50% 0 auto; height: 1px; transform: translateY(-50%); }
+.divider:hover::after, .divider:focus-visible::after { background: var(--app-hairline-strong); }
+
+/* ── Tab group ─────────────────────────────────────────────────────────── */
+.group { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: var(--app-surface); }
+.group-empty { display: grid; place-items: center; }
+.group-hint { color: var(--app-text-subtle); font-size: 12px; }
+.group-bar { display: flex; align-items: center; flex: 0 0 var(--app-tab-height); padding: 0 6px 0 8px; }
+.tabs { display: flex; align-items: center; gap: 2px; min-width: 0; overflow: hidden; }
+.tab { display: inline-flex; align-items: center; gap: 6px; height: 25px; padding: 0 9px; border-radius: 6px; color: var(--app-text-subtle); font-size: 11.5px; transition: background .14s ease, color .14s ease; }
+.tab:hover { color: var(--app-text); background: var(--app-hover); }
+.tab.is-active { color: var(--app-text); background: var(--app-active); }
+.tab-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.group-actions { display: flex; align-items: center; gap: 1px; margin-left: auto; }
+.group-action { width: 24px; height: 24px; color: var(--app-text-subtle); }
+.group-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+/* ── 本地原语(曾经在这里压过 Mantine;Mantine 已卸载,这段是纯粹的本地类) ────── */
+.v-icon { border: 0; border-radius: 6px; color: var(--app-text-subtle); background: transparent; }
+.v-icon:hover { color: var(--app-text); background: var(--app-hover); }
+.v-icon.is-active { color: var(--app-text); background: var(--app-active); }
+.v-icon[data-disabled], .v-icon:disabled { color: var(--app-text-subtle); background: transparent; }
+.tool-button { width: 32px; height: 28px; }
+.v-input { min-height: 0; padding: 5px 8px; border: 0; border-radius: 6px; color: var(--app-text); background: var(--app-surface-glass); font-family: inherit; font-size: 11.5px; }
+.v-input::placeholder { color: var(--app-text-subtle); }
+.v-input:focus, .v-input:focus-within { border: 0; outline: 0; }
+.v-search { width: 100%; padding-left: 28px; background: var(--app-surface-glass); font-size: 11.5px; }
+/* 搜素框图标定位在输入框左侧,输入框自己负责让出这条 padding。 */
+.v-search-wrap { position: relative; display: flex; align-items: center; color: var(--app-text-subtle); }
+.v-search-wrap > svg { position: absolute; left: 9px; pointer-events: none; }
+.v-composer-input { padding: 0; background: transparent; font-size: 12px; line-height: 1.5; }
+
+/* ── Agent pane ────────────────────────────────────────────────────────── */
+.agent-pane { display: flex; flex: 1; flex-direction: column; justify-content: flex-end; min-height: 0; padding: 14px; }
+.agent-empty { position: relative; display: flex; flex: 1; align-items: center; justify-content: center; color: var(--app-text-subtle); }
+.agent-dot { position: absolute; bottom: -16px; color: var(--app-text-subtle); opacity: .5; }
+.agent-dot.is-live { opacity: 1; color: var(--app-text-muted); }
+.agent-composer { display: flex; align-items: flex-end; gap: 8px; min-height: 68px; padding: 10px 11px; border-radius: var(--app-radius); background: var(--app-surface-glass); }
+
+/* ── Notes pane ────────────────────────────────────────────────────────── */
+.notes-pane { display: flex; flex: 1; min-width: 0; min-height: 0; }
+.notes-rail { position: relative; display: flex; flex: 0 0 172px; flex-direction: column; min-height: 0; padding: 10px 8px; }
+.notes-scroll { flex: 1; min-height: 0; margin-top: 8px; }
+.note-item { display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px 7px; border-radius: 6px; color: var(--app-text-subtle); text-align: left; }
+.note-item:hover { color: var(--app-text); background: var(--app-hover); }
+.note-item.is-selected { color: var(--app-text); background: var(--app-active); }
+.note-item span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 11.5px; }
+.notes-new { position: absolute; top: 10px; right: 8px; width: 26px; height: 26px; }
+.note-body { display: flex; flex: 1; min-width: 0; min-height: 0; }
+.note-input { flex: 1; min-height: 0; padding: 16px 20px; border: 0; outline: 0; resize: none; color: var(--app-text); background: transparent; font-family: var(--app-mono); font-size: 12px; line-height: 1.85; }
+
+/* ── Board pane ────────────────────────────────────────────────────────── */
+.board-pane { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
+.board-bar { display: flex; align-items: center; gap: 1px; flex: 0 0 38px; padding: 0 10px; }
+.board-tool { width: 28px; height: 26px; }
+.board-zoom { margin: 0 4px; color: var(--app-text-subtle); font-family: var(--app-mono); font-size: 10px; }
+.board-canvas { position: relative; flex: 1; min-height: 0; overflow: hidden; transform: scale(var(--board-zoom, 1)); transform-origin: center; }
+.board-grid { position: absolute; inset: 0; opacity: .22; background-image: radial-gradient(var(--app-text-subtle) 0.6px, transparent 0.6px); background-size: 22px 22px; }
+.board-object { position: absolute; width: 132px; padding: 11px 10px; border-radius: var(--app-radius); background: var(--app-surface-strong); cursor: grab; transform: translate(-50%, -50%); user-select: none; }
+.board-object:active { cursor: grabbing; }
+.board-object strong { display: block; color: var(--app-text); font-size: 11.5px; font-weight: 600; }
+.board-object p { margin: 5px 0 0; color: var(--app-text-muted); font-size: 10.5px; line-height: 1.5; }
+
+/* ── Settings ──────────────────────────────────────────────────────────── */
+.settings-overlay { position: fixed; inset: 0; z-index: 20; background: rgba(8, 8, 9, .32); }
+/*
+ * 设置浮层:接近不透明的底 + 真实投影。
+ * 参考实现 Pebrel 的结论是"用阴影而不是辉光"——辉光只是向外扩散亮度、不建立高度
+ * 关系,浅色主题下只会让四周发灰;而一个要求你回答的面板,必须比可以被 Esc 关掉的
+ * 面板浮得更高。
+ */
+.settings-sheet { position: fixed; top: calc(var(--app-toolbar-height) + 6px); right: 14px; z-index: 21; width: 252px; padding: 15px; border-radius: 10px; background: rgba(24, 24, 26, .98); box-shadow: 0 14px 34px rgba(0, 0, 0, .46); outline: 0; }
+.settings-title { margin-bottom: 10px; color: var(--app-text); font-size: 13px; font-weight: 650; }
+.settings-row { display: flex; justify-content: space-between; padding: 8px 0; color: var(--app-text-muted); font-size: 11.5px; }
+.settings-value { color: var(--app-text); }
+
+/* 分段控件:选中态用中性底,强调色留给"当前面板"那一处。 */
+.settings-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 7px; background: var(--app-hover); }
+.settings-seg-item { padding: 3px 7px; border-radius: 5px; color: var(--app-text-subtle); font-size: 10.5px; transition: background .14s ease, color .14s ease; }
+.settings-seg-item:hover { color: var(--app-text); }
+.settings-seg-item.is-active { color: var(--app-text); background: var(--app-active); }
+
+/* 当前材质的说明行:与回执区分开 —— 说明是稳定的,回执是这次操作的结果。 */
+.settings-hint { margin: 4px 0 0; color: var(--app-text-muted); font-size: 10.5px; line-height: 1.5; }
+
+/*
+ * 材质切换的回执。它这一页唯一的动态文本,而且要说清"到底做了什么"——
+ * 材质是否生效不该靠肉眼猜,尤其 scrim 一厚就什么都看不出来。
+ */
+.settings-note { margin: 4px 0 0; color: var(--app-text-subtle); font-size: 10.5px; line-height: 1.5; word-break: break-word; }
+.settings-close { margin-top: 8px; padding: 7px 11px; border-radius: 6px; color: var(--app-text); background: var(--app-hover); font-size: 11.5px; }
+
+@media (max-width: 1080px) { .notes-rail { flex-basis: 148px; } }
+
+/* ── Overlays ──────────────────────────────────────────────────────────── */
+/*
+ * 提示气泡:与设置浮层同一原则——浮层靠**不透明底 + 真实投影**建立高度,
+ * 不用向外扩散的辉光(辉光只扩散亮度、不建立高度关系)。
+ */
+.v-tooltip { z-index: 40; padding: 5px 9px; border-radius: 6px; background: rgba(28, 28, 30, 0.98); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42); color: var(--app-text); font-size: 11.5px; user-select: none; }
+.v-tooltip-arrow { fill: rgba(28, 28, 30, 0.98); }
+
+/* ── Scrollbars ────────────────────────────────────────────────────────── */
+/* 只把原生滚动条压细、换成中性色;不自己造一条,免得再引入一套位置与惯性逻辑。 */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { border-radius: 4px; background: var(--app-hairline-strong); }
+*::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.26); }
+
+
+/* ── Material probe window ─────────────────────────────────────────────── */
+/*
+ * 对比窗口:一个窗口一种材质,页面上没有任何切换。内容刻意保持最小——只有正文和
+ * 一条由深到浅的色阶,分别用来判断"文字在上面还读不读得清"和"对比度被压掉多少"。
+ * 表面沿用的仍是同一套 token,否则比出来的差异里会混进两套样式表的差别。
+ */
+/*
+ * 探针页背景**刻意完全透明**。
+ *
+ * 这一页的全部意义就是让那层材质露出来,所以它不能压任何 scrim:实测 0.62 的 scrim
+ * 会把四种材质压成同一个值(R=G=27),四个窗口看起来一模一样 —— 那正是它先前失效的原因。
+ * 让它透明,`none` 就是未经处理的桌面,会模糊的材质就是模糊过的桌面,差别一眼可辨。
+ *
+ * 代价是文字要自己解决可读性:底下可能是任何东西。所以文字带描边与投影,
+ * 名字用一小块近乎不透明的底保住。
+ */
+.probe-shell { display: flex; flex-direction: column; gap: 14px; width: 100%; height: 100%; padding: 18px 20px; background: transparent; }
+.probe-name { align-self: flex-start; padding: 3px 8px; border-radius: 6px; background: rgba(12, 12, 14, 0.82); color: #f0f0f1; font-family: var(--app-mono); font-size: 12px; letter-spacing: 0.04em; }
+.probe-text { margin: 0; color: #f4f4f6; font-size: 12px; line-height: 1.7; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.7); }
+.probe-text-small { font-size: 11px; color: #dcdce0; }
+.probe-ramp { display: flex; gap: 4px; margin-top: auto; }
+.probe-ramp > span { flex: 1; height: 26px; border-radius: 4px; background: #f4f4f6; }
+
+/* ── Material texture backdrop ─────────────────────────────────────────── */
+/*
+ * 它不透明,作用就是替代桌面那一块:模糊只有背后有细节时才看得见,
+ * 而均匀壁纸会让四种材质读起来几乎一样。
+ *
+ * 窗口是 decorations(false) + skip_taskbar(true),没有系统标题栏、任务栏里也没有条目,
+ * 所以必须自带顶栏:一是说清它是什么,二是给一个关得掉的地方,三是当拖拽区。
+ * 少了这三点,它就是一块关不掉、又看不出用途的条纹矩形。
+ */
+/*
+ * 探针页背景**刻意完全透明**。
+ *
+ * 这一页的全部意义就是让那层材质露出来,所以它不能压任何 scrim:实测 0.62 的 scrim
+ * 会把四种材质压成同一个值(R=G=27),四个窗口看起来一模一样 —— 那正是它先前失效的原因。
+ * 让它透明,`none` 就是未经处理的底层内容,会模糊的材质就是模糊过的同一块内容。
+ *
+ * 代价是文字要自己解决可读性:底下可能是任何东西。所以顶栏带一条近乎不透明的底,
+ * 正文用描边与投影保住。
+ */
+.probe-shell { display: flex; flex-direction: column; gap: 14px; width: 100%; height: 100%; padding: 0 16px 14px; background: transparent; }
+.probe-bar { display: flex; align-items: center; gap: 8px; height: 28px; margin: 0 -16px 12px; padding: 0 6px 0 12px; background: rgba(10, 10, 12, 0.92); }
+.probe-name { flex: 1; color: #f0f0f1; font-family: var(--app-mono); font-size: 12px; letter-spacing: 0.04em; user-select: none; }
+.probe-close { display: grid; width: 22px; height: 20px; place-items: center; border-radius: 5px; color: #c8c8cc; }
+.probe-close:hover { color: #f4f4f6; background: rgba(255, 255, 255, 0.16); }
+.probe-text { margin: 0; color: #f4f4f6; font-size: 12px; line-height: 1.7; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.7); }
+.probe-text-small { font-size: 11px; color: #dcdce0; }
+.probe-ramp { display: flex; gap: 4px; margin-top: auto; }
+.probe-ramp > span { flex: 1; height: 26px; border-radius: 4px; background: #f4f4f6; }
+
+/* ── Material texture backdrop ─────────────────────────────────────────── */
+/*
+ * 它**不透明**,作用就是替代底层那一块:模糊只有背后有细节时才看得见,
+ * 而均匀壁纸会让四种材质读起来几乎一样。
+ *
+ * 窗口是 decorations(false) + skip_taskbar(true),没有系统标题栏、任务栏里也没有条目,
+ * 所以必须自带顶栏:一是说清它是什么,二是给一个关得掉的地方,三是当拖拽区。
+ * 少了这三点,它就是一块关不掉、又看不出用途的白板。
+ *
+ * 注:`background` 不能省。窗口本身是 transparent 的,少了这层底色,页面就只剩 WebView2
+ * 的默认白底 —— 看起来正是一块刺眼的白框,而不是纹理。
+ */
+.texture-shell { position: relative; width: 100%; height: 100%; overflow: hidden; background: #16161a; }
+.texture-stripes { position: absolute; inset: 0; background-image: repeating-linear-gradient(90deg, #e8e8ee 0 3px, #16161a 3px 6px); opacity: 0.9; }
+.texture-blocks { position: absolute; inset: 0; display: flex; }
+.texture-blocks > span { flex: 1; border-right: 1px solid rgba(232, 232, 238, 0.45); }
+.texture-blocks > span:nth-child(odd) { background: rgba(232, 232, 238, 0.16); }
+.texture-lines { position: absolute; left: 12px; right: 12px; bottom: 42px; display: flex; flex-direction: column; gap: 5px; }
+.texture-lines > span { height: 2px; background: #e8e8ee; }
+.texture-lines > span:nth-child(3n) { width: 62%; }
+.texture-lines > span:nth-child(4n) { width: 84%; }
+.texture-bar { position: absolute; inset: 0 0 auto; display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 6px 0 12px; background: rgba(10, 10, 12, 0.92); }
+.texture-title { flex: 1; color: #d8d8dc; font-family: var(--app-mono); font-size: 11px; user-select: none; }
+.texture-close { display: grid; width: 24px; height: 22px; place-items: center; border-radius: 5px; color: #c8c8cc; }
+.texture-close:hover { color: #f4f4f6; background: rgba(255, 255, 255, 0.16); }
+
+/* ── Self-drawn wallpaper material (2026-10-08) ─────────────────────────────
+ * Windows 的系统亚克力改不了模糊半径、去不掉噪点,所以这一档不用原生材质:
+ * Rust 读出桌面壁纸,前端按窗口在屏幕上的位置把它对齐,再整块大半径模糊。
+ *
+ * 层序注意:负 z-index 的子元素画在父元素背景**之上**,所以这一档里 .app-shell
+ * 自己的 scrim 背景必须关掉,改由 .wallpaper-backdrop::after 在壁纸上面画。
+ * 想调观感只动这三个变量。
+ */
+.app-shell { position: relative; isolation: isolate; }
+.app-shell[data-material="wallpaper"] {
+  background: transparent;
+  --app-wallpaper-blur: 72px;
+  --app-wallpaper-saturate: 1.25;
+  --app-wallpaper-scrim: rgba(9, 12, 22, 0.46);
+}
+/* Mica Alt 本身已经偏暗且不透,0.78 的 scrim 会把它整个盖死。 */
+.app-shell[data-material="tabbed"] { --app-scrim: rgba(9, 12, 22, 0.36); }
+.wallpaper-backdrop { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: rgb(14, 16, 24); }
+.wallpaper-backdrop-image { position: absolute; background-size: cover; background-position: center; background-repeat: no-repeat; filter: blur(var(--app-wallpaper-blur)) saturate(var(--app-wallpaper-saturate)) brightness(var(--app-wallpaper-brightness, 1)); transform: translateZ(0); will-change: transform; }
+.wallpaper-backdrop::after { content: ''; position: absolute; inset: 0; background: var(--app-wallpaper-scrim); }
+
+/* ── Material tuning (2026-10-08) ─────────────────────────────────────────
+ * 调质感时要看得见窗口本身,所以这时遮罩层不再压暗,面板也加宽一点放滑杆。 */
+.settings-overlay.is-clear { background: transparent; }
+.settings-sheet { width: 300px; }
+.settings-seg { flex-wrap: wrap; justify-content: flex-end; }
+.tuning { margin-top: 8px; padding: 10px 0 2px; border-top: 1px solid rgba(255, 255, 255, .06); }
+.tuning-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; color: var(--app-text-muted); font-size: 11.5px; }
+.tuning-reset { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 5px; color: var(--app-text-subtle); background: var(--app-hover); font-size: 10.5px; }
+.tuning-reset:hover:not(:disabled) { color: var(--app-text); }
+.tuning-reset:disabled { opacity: .4; cursor: default; }
+.tuning-row { display: grid; grid-template-columns: 30px 1fr 44px; align-items: center; gap: 8px; padding: 4px 0; color: var(--app-text-muted); font-size: 11px; }
+.tuning-range { width: 100%; accent-color: var(--app-accent); }
+.tuning-value { color: var(--app-text); font-family: var(--app-mono); font-size: 10px; text-align: right; }

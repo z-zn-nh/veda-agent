@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+.veda-dev.log
+.veda-app.log
+.veda-tauri.log
+
+# --- 本机运行产物 / 备份（不提交）---
+*.log
+.hark-backup-*/
+src-tauri/target/

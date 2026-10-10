@@ -1,0 +1,59 @@
+/*
+ * 本地原语层的样式。**这里只允许引用 var(--app-*)**,不写字面量颜色/字号/圆角。
+ * 唯一的例外是 1px 发丝线与绝对定位需要的 0。
+ *
+ * 分段的顺序与 docs/architecture/07-layout-design.md §8.2 的组件清单一致;
+ * 新增原语请往对应段里加,不要再往 src/styles.css 里堆。
+ */
+
+/* ── VButton ───────────────────────────────────────────────────────────────
+ * 高度 28 / padding 0 10 / 圆角 --app-radius / 字体 11.5 500。
+ * 状态见 §8.4:焦点是"看得见的一圈",不是把颜色调深。
+ */
+.v-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--app-radius);
+  color: var(--app-text);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 500;
+  transition: background .14s ease, color .14s ease;
+}
+.v-button:hover { background: var(--app-hover); }
+.v-button:active { background: var(--app-active); }
+.v-button:focus-visible { outline: 2px solid var(--app-focus-ring); outline-offset: 1px; }
+.v-button:disabled,
+.v-button[aria-disabled='true'] { color: var(--app-text-subtle); cursor: default; background: transparent; }
+
+/* solid 变体:用在"主要动作"上。它靠一层较实的 tint 而不是边框/阴影获得重量。 */
+.v-button-solid { background: var(--app-surface-glass); }
+.v-button-solid:hover { background: var(--app-active); }
+
+.v-button-label { white-space: nowrap; }
+
+/* ── VEmptyState ───────────────────────────────────────────────────────────
+ * 空态是"第一印象":必须给出出口,不能只留一行小字。
+ */
+.v-empty {
+  display: grid;
+  flex: 1;
+  gap: 14px;
+  padding: 24px;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+}
+.v-empty-title { margin: 0; color: var(--app-text); font-size: 13.5px; font-weight: 650; }
+.v-empty-actions { display: flex; gap: 8px; }
+.v-empty-hint { margin: 0; max-width: 46ch; color: var(--app-text-subtle); font-size: 11.5px; line-height: 1.7; }
+
+/* ── tab 状态标记(§0.2:未保存/失败不能只靠颜色) ──────────────────────────
+ * dirty 用「实心方块」而不是圆点 —— 形状本身就是第二信号;失败再叠一段可读文字。
+ */
+.tab-status { display: inline-flex; flex: none; align-items: center; gap: 5px; }
+.tab-dirty { width: 6px; height: 6px; border-radius: 1px; background: var(--app-text-muted); }
+.tab-failed { display: inline-flex; align-items: center; gap: 4px; color: var(--app-danger); font-size: 10.5px; }
