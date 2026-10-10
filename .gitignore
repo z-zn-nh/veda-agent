@@ -13,3 +13,4 @@ dist/
 *.log
 .hark-backup-*/
 src-tauri/target/
+.vite/
